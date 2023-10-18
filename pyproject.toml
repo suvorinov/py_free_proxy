@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "py-free-proxy"
+version = "0.1.0"
+description = "Getting a 'live' free proxy"
+authors = ["Oleg Suvorinov <suvorinovoleg@yandex.ru>"]
+readme = "README.md"
+packages = [{include = "py_free_proxy"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.31.0"
+py-random-useragent = "^0.1.4"
+beautifulsoup4 = "^4.12.2"
+
+[tool.poetry.scripts]
+free_proxy = "py_free_proxy.cli:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

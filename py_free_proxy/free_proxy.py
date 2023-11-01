@@ -1,13 +1,23 @@
 # -*- coding: utf-8 -*-
 # @Author: Oleg Suvorinov
 # @Date:   2023-10-18 18:46:53
-# @Last Modified by:   Oleg Suvorinov
-# @Last Modified time: 2023-10-24 19:03:16
+# @Last Modified by:   suvorinov
+# @Last Modified time: 2023-10-29 10:36:43
 
+import sys
 import os
 import logging
+import time
+from multiprocessing.dummy import Pool, current_process
+# from gevent.pool import Pool
 from importlib import import_module
 from typing import List, Dict
+
+import requests
+
+from py_random_useragent import UserAgent
+
+sys.setrecursionlimit(10000)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -37,20 +47,21 @@ class FreeProxy(object):
 
     base_dir = os.path.dirname(__file__)
 
-    def __init__(
-            self,
-            country: str = 'US',
-            schema: str = 'http',
-            anonymity: bool = True) -> None:
+    def __init__(self) -> None:
         self.plugins = []
+        self.scrapy_proxies = []
+        self.alive_proxies = []
 
-        self.country = country
-        self.schema = schema
-        self.anonymity = anonymity
+        self.country = 'US'
+        self.schema = 'http'
+        self.anonymity = True
+
+        self.origin_ip = None
 
         self.__load_plugins()
 
-    def __load_plugins(self):
+    def __load_plugins(self) -> None:
+        """Docstring for __load_plugins"""
         logger.info("Load plugins...")
         for plugin_name in os.listdir(os.path.join(self.base_dir, 'plugins')):
             if os.path.splitext(plugin_name)[1] != '.py' or \
@@ -70,14 +81,57 @@ class FreeProxy(object):
             # inst.proxies = copy.deepcopy(self.valid_proxies)
             self.plugins.append(inst)
 
-    def _get_proxies(self):
+    def __get_origin_ip(self) -> None:
+        logger.info("Get origin ip...")
+        rp = requests.get(
+            'http://httpbin.org/get',
+            headers={"User-Agent": UserAgent().get_ua()}
+        )
+        self.origin_ip = rp.json().get('origin', '')
+        logger.info("Current Ip Address: %s" % self.origin_ip)
+
+    def __check_proxy(self, proxy: dict, schema: str = 'http') -> Dict:
+        _proxy = dict()
+
+        return _proxy
+
+    def __check_scrapy_proxies(self) -> None:
+        logger.info("Check scrapy proxies")
+        with Pool() as pool:
+            for proxy in self.scrapy_proxies:
+                result = pool.apply_async(self.__check_proxy, (proxy, 'http'))
+            pool.close()
+            pool.join()
+
+    def __get_scrapy_proxies(self):
+        if not self.plugins:
+            logger.error("[x] No plugins found")
+            self.scrapy_proxies = []
+            return
+
+        self.__get_origin_ip()
+
         logger.info("Get proxies...")
-        for plugin in self.plugins:
-            plugin.scrapy_proxies()
+        with Pool() as pool:
+            results = [pool.apply_async(plugin.scrapy_proxies, ()) for plugin in self.plugins] # noqa
+            result = [x for p in results for x in p.get(timeout=2 * 60)]
+            self.scrapy_proxies.extend(result)
+            pool.close()
+            pool.join()
 
+        return
 
-    def proxy_list(self) -> List[Dict]:
-        return []
+    def get_proxies(self,
+                    country: str = 'US',
+                    schema: str = 'http',
+                    anonymity: bool = True,
+                    amount: int = 10) -> List[Dict]:
+        self.country = country
+        self.schema = schema
+        self.anonymity = anonymity
+
+        self.__get_scrapy_proxies()
+        self.__check_scrapy_proxies()
 
     def validate_proxy(self,
                        proxy: dict,
@@ -118,9 +172,3 @@ class FreeProxy(object):
             "response_time": round(request_end - request_begin, 2),
             # "from": proxy.get('from')
         }
-
-
-if __name__ == '__main__':
-    p = FreeProxy()
-    print(p.proxy_list())
-    print(p.plugins)

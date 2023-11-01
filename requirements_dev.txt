@@ -1,0 +1,11 @@
+beautifulsoup4==4.12.2
+certifi==2023.7.22
+charset-normalizer==3.3.0
+idna==3.4
+lxml==4.9.3
+-e git+ssh://git@github.com/suvorinov/py_free_proxy.git@818d4742b5fdc5bf411fbdf5c94ff87a03cbbbd0#egg=py_free_proxy
+py-random-useragent==0.1.4
+PyYAML==6.0.1
+requests==2.31.0
+soupsieve==2.5
+urllib3==2.0.7
